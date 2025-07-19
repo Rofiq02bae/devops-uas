@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -17,3 +18,24 @@ spec:
         image: rofiq02bae/devops-uas:latest
         ports:
         - containerPort: 8000
+=======
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: devops
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: devops
+  template:
+    metadata:
+      labels:
+        app: devops
+    spec:
+      containers:
+      - name: devops
+        image: rofiq02bae/devops-uas:latest
+        ports:
+        - containerPort: 8000
+>>>>>>> cbdace2609bddf46d9bc19fb9e3490e8a827ad09
