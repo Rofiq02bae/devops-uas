@@ -1,0 +1,5 @@
+flask==2.3.2            # Contoh framework web
+pytest==7.4.0           # Untuk unit testing
+requests==2.31.0        # Library HTTP client (jika digunakan)
+pylint==3.0.3           # Untuk analisis kode lokal
+coverage==7.2.7         # Untuk mengukur code coverage
