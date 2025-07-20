@@ -23,8 +23,7 @@ jobs:
 
       - name: Run Tests
         run: |
-          docker run --rm -it -e SONAR_TOKEN="${{ secrets.SONAR_TOKEN }}" -v "%cd%:/usr/src" sonarsource/sonar-scanner-cli
-
+          pytest
 
       - name: SonarQube Scan
         uses: sonarsource/sonarqube-scan-action@master
