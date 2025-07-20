@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   sonarqube:
     image: sonarqube:lts-community
@@ -15,6 +17,7 @@ services:
       - sonarqube_extensions:/opt/sonarqube/extensions
       - sonarqube_logs:/opt/sonarqube/logs
       - sonarqube_temp:/opt/sonarqube/temp
+    restart: unless-stopped
 
   sonar_db:
     image: postgres:13
@@ -25,51 +28,92 @@ services:
     volumes:
       - sonar_db:/var/lib/postgresql
       - sonar_db_data:/var/lib/postgresql/data
-
+    restart: unless-stopped
+  
   loki:
     image: grafana/loki:2.9.0
     ports:
       - "3100:3100"
-    command: -config.file=/etc/loki/local-config.yaml -config.expand-env
-    environment:
-      - HOST=host.docker.internal
+    command: -config.file=/etc/loki/local-config.yaml
     volumes:
-      - ./loki-config.yaml:/etc/loki/local-config.yaml
-    networks:
-      - loki-net
-    
+      - ./data/loki:/etc/loki
+      - loki_data:/loki
+    restart: unless-stopped
 
   promtail:
     image: grafana/promtail:latest
     volumes:
-      - ./promtail-config.yml:/etc/promtail/promtail.yml
-      - /var/log:/var/log
-    command: -config.file=/etc/promtail/promtail.yml -config.expand-env
+      - ./data/promtail:/etc/promtail
+      - /var/log:/var/log:ro
+    command: -config.file=/etc/promtail/config.yml
     depends_on:
       - loki
-    networks:
-      - loki-net
+    restart: unless-stopped
+
 
   prometheus:
-    image: prom/prometheus:v2.46.0
-    ports:
-      - "9090:9090"
+    image: prom/prometheus:latest
+    container_name: monitoring_prometheus
+    restart: unless-stopped
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./data/prometheus/config:/etc/prometheus/
+      - ./data/prometheus/data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+    ports:
+      - 9090:9090
+    depends_on:
+      - cadvisor
+      - node-exporter
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: monitoring_node_exporter
+    restart: unless-stopped
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.rootfs=/rootfs'
+    expose:
+      - 9100
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: monitoring_cadvisor
+    restart: unless-stopped
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    expose:
+      - 8080
 
   grafana:
     image: grafana/grafana:latest
+    container_name: monitoring_grafana
+    restart: unless-stopped
     ports:
-      - "3000:3000"
-    environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - 3000:3000
     depends_on:
+      - prometheus
       - loki
-    networks:
-      - loki-net
+    volumes:
+      - ./data/grafana:/var/lib/grafana
+      - ./data/grafana/provisioning:/etc/grafana/provisioning
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_USERS_ALLOW_SIGN_UP=false
+      # Hapus atau aktifkan SMTP hanya jika kamu pakai
+      # - GF_SMTP_ENABLED=true
+      # - GF_SMTP_HOST=smtp.gmail.com:587
+      # - GF_SMTP_USER=youremail@gmail.com
+      # - GF_SMTP_PASSWORD=yourpassword
+      # - GF_SMTP_FROM_ADDRESS=youremail@gmail.com
 
 volumes:
   sonarqube_conf:
@@ -79,7 +123,4 @@ volumes:
   sonarqube_temp:
   sonar_db:
   sonar_db_data:
-  grafana_data:
-
-networks:
-  loki-net:
+  loki_data:
