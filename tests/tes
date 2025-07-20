@@ -1,0 +1,25 @@
+import pytest
+from app import app
+
+@pytest.fixture
+def client():
+    with app.test_client() as client:
+        yield client
+
+def test_home(client):
+    res = client.get('/')
+    assert res.status_code == 200
+    assert b"Aplikasi DevOps" in res.data
+
+def test_add(client):
+    res = client.get('/add?a=3&b=2')
+    assert res.status_code == 200
+    assert res.get_json()['result'] == 5
+
+def test_add_invalid_input(client):
+    res = client.get('/add?a=x&b=2')
+    assert res.status_code == 400
+    assert 'error' in res.get_json()
+
+def test_hello_world():
+    assert "Hello, World!" == "Hello, World!"
