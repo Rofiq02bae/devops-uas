@@ -124,4 +124,3 @@ volumes:
   sonar_db:
   sonar_db_data:
   loki_data:
-
