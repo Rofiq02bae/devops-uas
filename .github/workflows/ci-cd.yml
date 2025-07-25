@@ -5,35 +5,41 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v3
+    - name: Checkout Repository
+      uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
 
-      - name: Install Dependencies
-        run: |
-          pip install -r requirements.txt
+    - name: Install Dependencies
+      run: |
+        pip install -r requirements.txt
 
-      - name: Run Tests
-        run: |
-          pytest
+    - name: Run Tests
+      run: |
+        pytest
 
-      # - name: SonarQube Scan
-      #   run: |
-      #     docker run --rm -e SONAR_TOKEN="${{ secrets.SONAR_TOKEN }}" -e SONAR_HOST_URL="${{ secrets.SONAR_HOST_URL }}" -v "${{ github.workspace }}:/usr/src" sonarsource/sonar-scanner-cli
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Build Docker Image
-        run: |
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/devops-uas:latest .
+    - name: Docker Login to Azure Container Registry
+      run: |
+        echo "${{ secrets.ACR_PASSWORD }}" | docker login ${{ secrets.ACR_LOGIN_SERVER }} -u ${{ secrets.ACR_USERNAME }} --password-stdin
 
-      # - name: Push Docker Image
-      #   run: |
-      #     echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
-      #     docker push ${{ secrets.DOCKER_USERNAME }}/devops-uas:latest
+    - name: Build Docker Image
+      run: |
+        docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/devops-uas:latest .
+
+    - name: Push Docker Image
+      run: |
+        docker push ${{ secrets.ACR_LOGIN_SERVER }}/devops-uas:latest
